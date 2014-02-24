@@ -1,13 +1,6 @@
 main : void!
 main = {
   print! "Done in parallel:"
-
-
   contents = map http.get ("http://google.com" :: ["http://yahoo.com"])
   print! contents
 }
-
-
-
-
-
