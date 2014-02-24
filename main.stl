@@ -5,19 +5,20 @@ main = {
   print! contents
 }
 
-###### map : (a -> b) -> [a] -> [b]
-# map f = choose {
-#   x :: xs -> {
-#     f x :: map f xs
-#   }
-#   [] -> []
-# }
-#
-# map! : (a -> b!) -> [a] -> [b!]
-# map! f = choose {
-#   x :: xs -> {
-#     force (f x) :: map! f xs
-#   }
-#   [] -> []
-# }
+###
+map : (a -> b) -> [a] -> [b]
+map f = choose {
+  x :: xs -> {
+    f x :: map f xs
+  }
+  [] -> []
+}
+
+map! : (a -> b!) -> [a] -> [b!]
+map! f = choose {
+  x :: xs -> {
+    force (f x) :: map! f xs
+  }
+  [] -> []
+}
 ###
