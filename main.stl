@@ -1,0 +1,23 @@
+main : void!
+main = {
+  print! "Done in parallel:"
+  contents = map http.get ["http://google.com", "http://yahoo.com"]
+  print! contents
+}
+
+###### map : (a -> b) -> [a] -> [b]
+# map f = choose {
+#   x :: xs -> {
+#     f x :: map f xs
+#   }
+#   [] -> []
+# }
+#
+# map! : (a -> b!) -> [a] -> [b!]
+# map! f = choose {
+#   x :: xs -> {
+#     force (f x) :: map! f xs
+#   }
+#   [] -> []
+# }
+###
