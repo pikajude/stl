@@ -11,9 +11,6 @@ module Language.STL.Lex (
 
 import Control.Applicative
 import Data.ByteString (ByteString)
-import qualified Data.ByteString as B
-import qualified Data.ByteString.UTF8 as B
-import Data.Char
 import Data.Function
 import Data.List
 import Data.Monoid
@@ -21,6 +18,9 @@ import Data.Text (Text, pack)
 import Prelude hiding (lex, until)
 import Text.Trifecta
 import Text.Trifecta.Delta
+
+{-# ANN module "HLint: ignore Use camelCase" #-}
+
 
 data Keyword = K_Void | K_Choose | K_If | K_Else deriving (Show, Eq, Enum, Bounded)
 
@@ -116,25 +116,3 @@ tok = do
 
 lex :: ByteString -> Result TokenStream
 lex = parseByteString (some tok <* eof) mempty
-
---test :: IO ()
---test = -- do
---    quickCheck $ \x -> length (collapseSeps x) <= length x
---
---instance Arbitrary Token where
---    arbitrary = Token <$> arbitrary <*> pure mempty
---
---instance Arbitrary PlainTok where
---    arbitrary = oneof [genIdent, pure Separator, genPunc, genLit, genKW, genComm] where
---        genIdent = do
---            start <- elements $ '_' : ['a'..'z']
---            chars <- vectorOf 10 . elements $ ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ "_"
---            return . Ident . pack $ start : chars
---
---        genComm = Comment <$> oneof [Single <$> arbitrary, Multiline <$> arbitrary]
---
---        genPunc = Punct <$> elements [minBound..maxBound]
---
---        genLit = Lit <$> oneof [L_Str <$> arbitrary]
---
---        genKW = KW <$> elements [minBound..maxBound]

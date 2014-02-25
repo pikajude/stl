@@ -11,5 +11,5 @@ normalize = collapseSeps
           . dropWhile ((== Separator) . tTok)
 
 collapseSeps :: TokenTrans
-collapseSeps = concatMap (\xs -> if tTok (head xs) == Separator then take 1 xs else xs)
+collapseSeps = (=<<) (\xs -> if tTok (head xs) == Separator then take 1 xs else xs)
              . groupBy ((==) `on` tTok)

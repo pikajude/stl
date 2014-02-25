@@ -3,8 +3,8 @@
 module Language.STL.Parse where
 
 import Control.Applicative hiding (many, (<|>))
--- import Control.Lens (over, _Left)
 import Data.Functor.Identity
+import Data.List
 import Data.Text (Text)
 import qualified Language.STL.Lex as L
 import Text.Parsec
@@ -13,11 +13,23 @@ import Text.Trifecta.Delta (Delta(..))
 
 type AST = [Dec]
 
-data Dec = TypeDec Ident Type | NakedExpr Expr deriving Show
+type Body = Expr
 
-data Expr = App Expr [Expr] | Var Ident | Lit L.Literal deriving Show
+data Dec = TypeDec { tdId :: Ident, tdType :: Type }
+         | FunDec { fdId :: Ident, fdPatterns :: [([Pat],Body)] }
+         deriving Show
 
-data Type = TyVar Ident | TyApp Type Type | TyVoid deriving Show
+data Pat = PatVar Ident deriving Show
+
+data Expr = App { appHead :: Expr, appBody :: [Expr] }
+          | Var { unVar :: Ident }
+          | Lit { unLit :: L.Literal }
+          deriving Show
+
+data Type = TyVar { tvId :: Ident }
+          | TyApp Type Type
+          | TyVoid
+          deriving Show
 
 data Ident = Ident Text deriving Show
 
@@ -26,9 +38,17 @@ type TokenParser = ParsecT L.TokenStream [L.Token] Identity
 parse :: Stream s Identity L.Token
       => String -> s -> Either ParseError AST
 parse src = runP stlParser [] src where
-    stlParser = dec `endBy` sepT <* eof where
+    stlParser = fmap combineFunDecs $ dec `endBy` sepT <* eof where
 
-        dec = try tyDec <|> fmap NakedExpr expT
+        dec = try tyDec <|> funDec
+
+        funDec = FunDec <$> identT <*> fmap return patBodyT
+
+        patBodyT = (,) <$> patSigT <*> (pEqualsT *> expT)
+
+        patSigT = parens $ patT `sepBy` commaT
+
+        patT = PatVar <$> identT
 
         expT = try appT <|> varE
 
@@ -47,7 +67,10 @@ parse src = runP stlParser [] src where
 
         sepT = stlToken $ \x -> case x of L.Separator -> Just (); _ -> Nothing
 
-        lParenT = stlToken $ \x -> case x of L.Punct L.P_LParen -> Just ();
+        pEqualsT = stlToken $ \x -> case x of L.Punct L.P_Equals -> Just ()
+                                              _ -> Nothing
+
+        lParenT = stlToken $ \x -> case x of L.Punct L.P_LParen -> Just ()
                                              _ -> Nothing
 
         rParenT = stlToken $ \x -> case x of L.Punct L.P_RParen -> Just ();
@@ -87,6 +110,13 @@ parse src = runP stlParser [] src where
         tyColon = stlToken $ \x -> case x of
                       L.Punct L.P_Colon -> Just ()
                       _ -> Nothing
+
+combineFunDecs = map (\ xs@(x:_) -> if length xs == 1
+                                        then x
+                                        else FunDec (fdId x) (concatMap fdPatterns xs))
+    . groupBy (\a b -> case (a, b) of
+        (FunDec (Ident t) _, FunDec (Ident t1) _) -> t == t1
+        _ -> False)
 
 locToSourcePos :: SourceName -> L.Token -> SourcePos
 locToSourcePos src (L.Token _ tp) = case tp of
