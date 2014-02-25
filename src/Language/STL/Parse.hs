@@ -15,7 +15,7 @@ type AST = [Dec]
 
 data Dec = TypeDec Ident Type | NakedExpr Expr deriving Show
 
-data Expr = App Expr Expr | Var Ident | Lit L.Literal deriving Show
+data Expr = App Expr [Expr] | Var Ident | Lit L.Literal deriving Show
 
 data Type = TyVar Ident | TyApp Type Type | TyVoid deriving Show
 
@@ -28,19 +28,33 @@ parse :: Stream s Identity L.Token
 parse src = runP stlParser [] src where
     stlParser = dec `endBy` sepT <* eof where
 
-        dec = try tyDec <|> fmap NakedExpr nakedExpr
+        dec = try tyDec <|> fmap NakedExpr expT
 
-        nonAppE = varE
+        expT = try appT <|> varE
 
-        nakedExpr = appE <|> nonAppE
+        appStartT = try varE <|> parens expT
+
+        parens e = lParenT *> e <* rParenT
+
+        appT = do
+            m <- appStartT
+            ns <- parens $ expT `sepBy` commaT
+            return $ App m ns
 
         varE = Var <$> identT
-
-        appE = App <$> nonAppE <*> appE
 
         stlToken f = token (show . L.tTok) (locToSourcePos src) (f . L.tTok)
 
         sepT = stlToken $ \x -> case x of L.Separator -> Just (); _ -> Nothing
+
+        lParenT = stlToken $ \x -> case x of L.Punct L.P_LParen -> Just ();
+                                             _ -> Nothing
+
+        rParenT = stlToken $ \x -> case x of L.Punct L.P_RParen -> Just ();
+                                             _ -> Nothing
+
+        commaT = stlToken $ \x -> case x of L.Punct L.P_Comma -> Just ();
+                                            _ -> Nothing
 
         tyDec = do
             i <- identT

@@ -28,19 +28,19 @@ Supported escape sequences are `\n`, `\r`, `\t`, and `\e`. stl doesn't have sing
 
 ### Function application
 
-Function application looks like this: `f a b c`. Group with parentheses: `f (a b) c`. Functions in stl are first-class citizens.
+Function application looks like this: `f(a, b, c)`. Functions in stl are first-class citizens.
 
 Within braces `{}`, you can use semicolons or newlines to separate expressions.
 
 ```
-foo x = {
-  print "Hello, world!"
-  return x
+foo(x) = {
+  print("Hello, world!")
+  x
 }
 ```
 
 ```
-bar x = { print "Hello, world!"; return x }
+bar(x) = { print("Hello, world!"); x }
 ```
 
 ### Function definition
@@ -48,16 +48,16 @@ bar x = { print "Hello, world!"; return x }
 Function definition looks like function application, but with a `=`.
 
 ```
-f a b = "Hello, #{a}! Welcome to #{b}!"
+f(a, b) = "Hello, #{a}! Welcome to #{b}!"
 
-f "dear user" "stl"
+f("dear user", "stl")
 ```
 
 Literals and data constructors on the LHS of a function definition will be matched on.
 
 ```
-f 1 = print "Finished!"
-f n = { print "Still going to 1…"; f (n - 1) }
+f(1) = print("Finished!")
+f(n) = { print("Still going to 1…"); f(n - 1) }
 ```
 
 ### Datatypes
@@ -65,9 +65,9 @@ f n = { print "Still going to 1…"; f (n - 1) }
 stl has algebraic data types. These are introduced with the `type` keyword.
 
 ```
-type Option x = Some x | None
+type Option(x) = Some(x) | None
 
-type List a = Nil | Cons a (List a)
+type List(a) = Nil | Cons(a, List(a))
 ```
 
 ### Pattern matching
@@ -76,14 +76,14 @@ stl supports pattern matching because not doing that is super lame. An example i
 
 ```
 # :: is the cons operator
-map _ [] = []
-map f (x::xs) = f x :: map f xs
+map(_, []) = []
+map(f, x::xs) = f(x) :: map(f, xs)
 ```
 
 including user-defined ones:
 
 ```
-fromOption (Option x) = x
+fromOption Option(x) = x
 fromOption None = panic! "fromOption on None"
 ```
 
@@ -91,7 +91,7 @@ fromOption None = panic! "fromOption on None"
 
 ```
 power2s : [integer]
-power2s = map (x -> 2 ** x) [1..10]
+power2s = map (x -> 2 ** x, [1..10])
 ```
 
 # Control flow
@@ -101,10 +101,10 @@ power2s = map (x -> 2 ** x) [1..10]
 Referential transparency makes futures a lot easier to deal with. Thus we don't have mutable state in this language. Use recursion instead.
 
 ```
-foo 1 = print "got to 1!"
-foo n = {
+foo(1) = print "got to 1!"
+foo(n) = {
   print "still not at 1..."
-  foo (n - 1)
+  foo(n - 1)
 }
 ```
 

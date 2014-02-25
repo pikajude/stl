@@ -7,7 +7,8 @@ import Language.STL.Lex
 type TokenTrans = TokenStream -> TokenStream
 
 normalize :: TokenTrans
-normalize = collapseSeps . dropWhile ((== Separator) . tTok)
+normalize = collapseSeps
+          . dropWhile ((== Separator) . tTok)
 
 collapseSeps :: TokenTrans
 collapseSeps = concatMap (\xs -> if tTok (head xs) == Separator then take 1 xs else xs)
