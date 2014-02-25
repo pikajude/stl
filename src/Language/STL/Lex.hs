@@ -7,6 +7,7 @@ module Language.STL.Lex (
   , Punctuation(..)
   , Keyword(..)
   , Literal(..)
+  , Comm(..)
 ) where
 
 import Control.Applicative
@@ -58,7 +59,7 @@ until :: Alternative f => f b -> f a -> f [a]
 until p m = [] <$ p <|> liftA2 (:) m (until p m)
 
 ptok :: Parser PlainTok
-ptok = (Separator <$ (char '\n' <|> symbolic ';') <?> "separator")
+ptok = (Separator <$ (symbolic '\n' <|> symbolic ';') <?> "separator")
 
    <|> runUnlined
            (fmap Comment (Multiline . pack

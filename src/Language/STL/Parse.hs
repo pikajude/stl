@@ -22,7 +22,9 @@ data Dec = TypeDec { tdId :: Ident, tdType :: Type }
 data Pat = PatVar Ident deriving Show
 
 data Expr = App { appHead :: Expr, appBody :: [Expr] }
+          | Seq [Expr]
           | Var { unVar :: Ident }
+          | Assign Ident Expr
           | Lit { unLit :: L.Literal }
           deriving Show
 
@@ -46,20 +48,32 @@ parse src = runP stlParser [] src where
 
         patBodyT = (,) <$> patSigT <*> (pEqualsT *> expT)
 
+        seqExpT = fmap Seq . braces $ many sepT *> expT `sepEndBy` sepT
+
         patSigT = parens $ patT `sepBy` commaT
 
         patT = PatVar <$> identT
 
-        expT = try appT <|> varE
+        expT = try seqExpT
+           <|> try appT
+           <|> try assignT
+           <|> try varE
+           <|> litE
 
         appStartT = try varE <|> parens expT
 
+        litE = fmap Lit $ try litStrT
+                      <|> litIntT
+
         parens e = lParenT *> e <* rParenT
+        braces e = lBraceT *> e <* rBraceT
 
         appT = do
             m <- appStartT
             ns <- parens $ expT `sepBy` commaT
             return $ App m ns
+
+        assignT = Assign <$> identT <*> (pEqualsT *> expT)
 
         varE = Var <$> identT
 
@@ -76,8 +90,20 @@ parse src = runP stlParser [] src where
         rParenT = stlToken $ \x -> case x of L.Punct L.P_RParen -> Just ();
                                              _ -> Nothing
 
+        lBraceT = stlToken $ \x -> case x of L.Punct L.P_LBrace -> Just ()
+                                             _ -> Nothing
+
+        rBraceT = stlToken $ \x -> case x of L.Punct L.P_RBrace -> Just ();
+                                             _ -> Nothing
+
         commaT = stlToken $ \x -> case x of L.Punct L.P_Comma -> Just ();
                                             _ -> Nothing
+
+        litStrT = stlToken $ \x -> case x of L.Lit l@(L.L_Str _) -> Just l
+                                             _ -> Nothing
+
+        litIntT = stlToken $ \x -> case x of L.Lit i@(L.L_Integer _) -> Just i
+                                             _ -> Nothing
 
         tyDec = do
             i <- identT

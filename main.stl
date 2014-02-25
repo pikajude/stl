@@ -1,3 +1,6 @@
 main : void -> void -> void
-main(f) = f(a, b, c, d)
-main(g) = g(a,b,c,d)
+main(f) = {
+  g = f(a, g, 1000, 23)
+  # hello
+  g(a, b, c, d)
+}
