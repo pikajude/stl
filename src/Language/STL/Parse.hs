@@ -37,12 +37,16 @@ data Ident = Ident Text deriving Show
 
 type TokenParser = ParsecT L.TokenStream [L.Token] Identity
 
+choose :: [ParsecT s u m a] -> ParsecT s u m a
+choose [x] = x
+choose (x:xs) = try x <|> choose xs
+
 parse :: Stream s Identity L.Token
       => String -> s -> Either ParseError AST
 parse src = runP stlParser [] src where
     stlParser = fmap combineFunDecs $ dec `endBy` sepT <* eof where
 
-        dec = try tyDec <|> funDec
+        dec = choose [tyDec, funDec]
 
         funDec = FunDec <$> identT <*> fmap return patBodyT
 
@@ -54,16 +58,21 @@ parse src = runP stlParser [] src where
 
         patT = PatVar <$> identT
 
-        expT = try seqExpT
-           <|> try appT
-           <|> try assignT
-           <|> try varE
-           <|> litE
+        -- An expression, which consists of:
+        expT = choose [ seqExpT -- ^ Sequencing: { a; b; c }
+                      , appT    -- ^ Function application: f(a,b,c)
+                      , assignT -- ^ Variable assignment: a = b
+                      , varE    -- ^ Variable reference: a
+                      , litE    -- ^ Literal: 1, "foo"
+                      ]
 
-        appStartT = try varE <|> parens expT
+        appStartT = choose [ varE        -- ^ f(a,b,c,d)
+                           , parens expT -- ^ (a = f(g); a)(b, c, d)
+                           ]
 
-        litE = fmap Lit $ try litStrT
-                      <|> litIntT
+        litE = fmap Lit $ choose [ litStrT -- ^ string literal
+                                 , litIntT -- ^ int literal
+                                 ]
 
         parens e = lParenT *> e <* rParenT
         braces e = lBraceT *> e <* rBraceT
@@ -111,11 +120,9 @@ parse src = runP stlParser [] src where
             ty <- typeT <?> "type"
             return $ TypeDec i ty
 
-        typeNonAppT = TyVoid <$ tyVoidT
-                  <|> TyVar <$> identT
+        typeNonAppT = choose [TyVoid <$ tyVoidT, TyVar <$> identT]
 
-        typeT = typeAppT
-            <|> typeNonAppT
+        typeT = choose [typeAppT, typeNonAppT]
 
         typeAppT = try $ do
             ty1 <- typeNonAppT
