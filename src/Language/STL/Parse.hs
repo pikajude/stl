@@ -1,6 +1,9 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Language.STL.Parse where
 
 import Control.Applicative hiding (many, (<|>))
+-- import Control.Lens (over, _Left)
 import Data.Functor.Identity
 import Data.Text (Text)
 import qualified Language.STL.Lex as L
@@ -10,7 +13,9 @@ import Text.Trifecta.Delta (Delta(..))
 
 type AST = [Dec]
 
-data Dec = TypeDec Ident Type deriving Show
+data Dec = TypeDec Ident Type | NakedExpr Expr deriving Show
+
+data Expr = App Expr Expr | Var Ident | Lit L.Literal deriving Show
 
 data Type = TyVar Ident | TyApp Type Type | TyVoid deriving Show
 
@@ -18,17 +23,29 @@ data Ident = Ident Text deriving Show
 
 type TokenParser = ParsecT L.TokenStream [L.Token] Identity
 
-parse :: L.TokenStream -> Either ParseError AST
-parse = runP stlParser [] "file" where
-    stlParser = tyDec `sepBy` sepT where
-        stlToken f = token show locToSourcePos (f . L.tTok)
+parse :: Stream s Identity L.Token
+      => String -> s -> Either ParseError AST
+parse src = runP stlParser [] src where
+    stlParser = dec `endBy` sepT <* eof where
+
+        dec = try tyDec <|> fmap NakedExpr nakedExpr
+
+        nonAppE = varE
+
+        nakedExpr = appE <|> nonAppE
+
+        varE = Var <$> identT
+
+        appE = App <$> nonAppE <*> appE
+
+        stlToken f = token (show . L.tTok) (locToSourcePos src) (f . L.tTok)
 
         sepT = stlToken $ \x -> case x of L.Separator -> Just (); _ -> Nothing
 
         tyDec = do
             i <- identT
             tyColon
-            ty <- typeT
+            ty <- typeT <?> "type"
             return $ TypeDec i ty
 
         typeNonAppT = TyVoid <$ tyVoidT
@@ -57,8 +74,8 @@ parse = runP stlParser [] "file" where
                       L.Punct L.P_Colon -> Just ()
                       _ -> Nothing
 
-locToSourcePos :: L.Token -> SourcePos
-locToSourcePos (L.Token _ tp) = case tp of
-    (Columns a _, _) -> newPos "unknown" 1 (fromIntegral a + 1)
-    (Lines a b _ _, _) -> newPos "unknown" (fromIntegral a + 1) (fromIntegral b + 1)
+locToSourcePos :: SourceName -> L.Token -> SourcePos
+locToSourcePos src (L.Token _ tp) = case tp of
+    (Columns a _, _) -> newPos src 1 (fromIntegral a + 1)
+    (Lines a b _ _, _) -> newPos src (fromIntegral a + 1) (fromIntegral b + 1)
     x -> error $ show x

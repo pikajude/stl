@@ -6,6 +6,7 @@ module Language.STL.Lex (
   , PlainTok(..)
   , Punctuation(..)
   , Keyword(..)
+  , Literal(..)
 ) where
 
 import Control.Applicative
@@ -34,6 +35,7 @@ data Comm = Single Text
           deriving (Show, Eq)
 
 data Literal = L_Str Text
+             | L_Integer Integer
              deriving (Show, Eq)
 
 data PlainTok = Ident Text
@@ -107,6 +109,7 @@ ptok = Separator <$ (char '\n' <|> char ';' <?> "separator") <* realSpace
    <|> fmap Lit (L_Str . pack . concat <$>
                      token (between (char '"') (char '"' <?> "end of string")
                          (many (esc <|> fmap return (noneOf "\"\n"))))
+             <|> L_Integer <$> integer
              <?> "literal"
                 )
     where esc = do

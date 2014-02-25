@@ -11,8 +11,5 @@ main :: IO ()
 main = withFile "main.stl" ReadMode $ \h -> do
     m <- fmap lex (B.hGetContents h)
     case m of
-        Success ts -> do
-            let n = normalize ts
-            print n
-            print $ parse n
+        Success ts -> print $ parse "main.stl" $ normalize ts
         e -> error $ show e
